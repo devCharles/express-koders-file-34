@@ -1,33 +1,16 @@
 const express = require("express");
-const fs = require("node:fs");
+
+const kodersUseCase = require("./koders");
+const db = require("./db");
 
 const server = express();
 const port = 8080;
 
-const fileName = "koders.json";
-
-function init() {
-  const exists = fs.existsSync(fileName);
-
-  if (!exists) {
-    fs.writeFileSync(fileName, JSON.stringify([]), "utf8");
-  }
-}
-
-function getKoders() {
-  const content = fs.readFileSync(fileName, "utf8");
-  return JSON.parse(content);
-}
-
-function setKoders(newKoders) {
-  fs.writeFileSync(fileName, JSON.stringify(newKoders), "utf8");
-}
-
-init();
+db.init();
 server.use(express.json());
 
 server.get("/koders", (request, response) => {
-  const koders = getKoders();
+  const koders = kodersUseCase.getAll();
 
   response.json({
     message: "all koders get",
@@ -39,56 +22,45 @@ server.get("/koders", (request, response) => {
 server.post("/koders", (request, response) => {
   const name = request.body.name;
 
-  if (!name) {
+  try {
+    const koders = kodersUseCase.add(name);
+
+    response.json({
+      message: "koder created",
+      success: true,
+      data: { koders },
+    });
+  } catch (error) {
     response.status(400);
     response.json({
-      message: "name is required",
+      message: error.message,
       success: false,
     });
-    return;
   }
-
-  const koders = getKoders();
-  koders.push(name.toLowerCase());
-
-  setKoders(koders);
-
-  response.json({
-    message: "koder created",
-    success: true,
-    data: { koders },
-  });
 });
 
 server.delete("/koders/:name", (request, response) => {
   const name = request.params.name;
 
-  if (!name) {
+  try {
+    const koders = kodersUseCase.removeByName(name);
+
+    response.json({
+      message: "koder deleted",
+      success: true,
+      data: { koders },
+    });
+  } catch (error) {
     response.status(400);
     response.json({
-      message: "name is required",
+      message: error.message,
       success: false,
     });
-    return;
   }
-
-  const koders = getKoders();
-
-  const newKoders = koders.filter(
-    (koder) => koder.toLowerCase() !== name.toLowerCase()
-  );
-
-  setKoders(newKoders);
-
-  response.json({
-    message: "koder deleted",
-    success: true,
-    data: { koders: newKoders },
-  });
 });
 
 server.delete("/koders", (request, response) => {
-  setKoders([]);
+  kodersUseCase.removeAll();
 
   response.json({
     message: "all koders deleted",
